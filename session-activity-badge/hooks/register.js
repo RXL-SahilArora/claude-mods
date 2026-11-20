@@ -247,7 +247,20 @@ export function register(on) {
     await readOwnName($)
     await publish($)
     $.clock.every(POLL_MS, () => tick($))
+    await $.command.register({
+      name: 'badge-clear',
+      description: "Clear this session's background-task rows from the activity badge",
+    })
     return next(e)
+  })
+
+  // A task that ended without a notice (stopped from the app's panel, or gone before a TaskStop
+  // reached it) would stay listed until it expires; this clears the list by hand.
+  on('command.run', { command: 'badge-clear' }, async ($) => {
+    const cleared = background.length
+    background = []
+    await publish($)
+    return { text: 'Cleared ' + plural(cleared, 'background-task row') + ' from the activity badge.' }
   })
 
   // turn.start fires for the main loop only; a subagent's run raises none.

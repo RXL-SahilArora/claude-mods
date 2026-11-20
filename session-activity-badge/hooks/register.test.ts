@@ -150,6 +150,7 @@ test('a background shell is listed from its start until its completion notice', 
   })
   on('store.get', (_, e: any) => ({ value: store.get(e.key) }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', () => ({ value: { command: 'badge-clear' } }))
   on('tool.call', (_, e: any) =>
     ({ result: e.run_in_background ? { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'bx7' } : {} }))
   on('prompt.submit', (_, e) => ({ text: e.text }))
@@ -170,6 +171,12 @@ test('a background shell is listed from its start until its completion notice', 
   await $.tool.call({ tool: 'TaskStop', task_id: 'bx7' } as any)
   await new Promise((r) => setTimeout(r, 0))
   expect(store.get('activity:self').background).toEqual([])
+
+  // A row left behind is cleared by hand.
+  await $.tool.call({ tool: 'Bash', command: 'sleep 90', description: 'Wait 90 seconds', run_in_background: true } as any)
+  const ran: any = await $.command.run({ command: 'badge-clear', args: '' } as any)
+  expect(ran.text).toBe('Cleared 1 background-task row from the activity badge.')
+  expect(store.get('activity:self').background).toEqual([])
   // The notice is not what the session is doing.
-  expect(store.get('activity:self').activity).toBe('TaskStop')
+  expect(store.get('activity:self').activity).toBe('Wait 90 seconds')
 })

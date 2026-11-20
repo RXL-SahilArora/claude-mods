@@ -19,7 +19,8 @@ Up to three sessions are listed by their title (as the sidebar shows it), then `
 - **Background work.** Background shells show under their session, up to three per session, for
   idle sessions and this one too. A shell is listed from the moment it starts until its completion
   notice reaches the session. Where no other plugin skips it, each turn's Stop hook also replaces
-  the list with the engine's own.
+  the list with the engine's own. A task that ends without a notice (one stopped from the app's
+  panel) can stay listed; `/badge-clear` empties this session's background rows.
 
 When everything is idle it draws nothing.
 
