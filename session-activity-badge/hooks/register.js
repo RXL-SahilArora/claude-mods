@@ -16,7 +16,7 @@ const POLL_MS = 3000
 const STALE_MS = 15000
 const PURGE_MS = 10 * 60 * 1000
 const RUNNING = ['running', 'pending']
-const MAX_NAMES = 3
+const MAX_NAMES = 20
 // Prints this session's title records from the tail of its transcript; the id arrives as $1.
 // The title records are re-appended often, so the last 4 MB of a 100 MB transcript holds them.
 const TITLE_SCRIPT = String.raw`f=$(ls "$HOME"/.claude/projects/*/"$1".jsonl 2>/dev/null | head -1)
@@ -29,6 +29,10 @@ const BAR_CELLS = 10
 const MAX_STEP_CHARS = 40
 const MAX_ACTIVITY_CHARS = 60
 const MAX_BACKGROUND = 3
+// The band shows its header and at most this many rows under it; the rest scrolls.
+const VISIBLE_ROWS = 5
+const SCROLL_UP = 'badge-scroll-up'
+const SCROLL_DOWN = 'badge-scroll-down'
 // ponytail: a task whose completion notice never came (the app restarted under it) is dropped after
 // this long; swap for an engine list of background tasks if one appears.
 const MAX_BACKGROUND_MS = 6 * 60 * 60 * 1000
@@ -51,6 +55,9 @@ let othersAgents = 0
 // One { name, busy, plan, activity, background } per session that is working or has background
 // work (this session included for the latter), plan as summarize() returns it (null without a list).
 let othersRows = []
+// The band's own scroll window: the first body row shown, and how many body rows the last draw had.
+let bandOffset = 0
+let bandRows = 0
 
 function summarize() {
   if (plan.length === 0) return null
@@ -184,6 +191,15 @@ async function tick($) {
   await publish($)
   const othersChanged = await poll($)
   if (ownChanged || othersChanged) $.ui.invalidate('ui.render')
+}
+
+// Moves the band's window by `by` rows, kept inside the rows the last draw had; true if it moved.
+function scrollBand(by) {
+  const max = Math.max(0, bandRows - VISIBLE_ROWS)
+  const offset = Math.min(max, Math.max(0, bandOffset + by))
+  if (offset === bandOffset) return false
+  bandOffset = offset
+  return true
 }
 
 function plural(n, word) {
@@ -348,6 +364,13 @@ export function register(on) {
     return answer
   })
 
+  // The wheel or the arrow keys over the band move its own window while it has more than it shows.
+  on('ui.scroll', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (bandRows <= VISIBLE_ROWS) return next(e)
+    if (scrollBand(Math.sign(e.by) * Math.max(1, Math.abs(e.by)))) $.ui.invalidate('ui.render')
+    return {}
+  })
+
   on('session.end', async ($, e, next) => {
     if (selfKey !== null) await $.store.delete(selfKey)
     return next(e)
@@ -363,12 +386,32 @@ export function register(on) {
     if (agents > 0) parts.push(plural(agents, 'agent') + ' running')
     if (parts.length === 0) return next(e)
 
-    const { Box, Text } = $.ui.resolve(e)
-    const lines = [Text({ color: 'red', bold: true, children: ['● ' + parts.join(' · ')] })]
-    for (const row of othersRows.slice(0, MAX_NAMES)) lines.push(...sessionRows(Box, Text, row))
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const body = []
+    for (const row of othersRows.slice(0, MAX_NAMES)) body.push(...sessionRows(Box, Text, row))
     const extra = othersRows.length - MAX_NAMES
-    if (extra > 0) lines.push(Text({ dimColor: true, children: ['  +' + extra + ' more'] }))
+    if (extra > 0) body.push(Text({ dimColor: true, children: ['  +' + extra + ' more'] }))
+
+    // ponytail: the engine scrolls the band only past half the terminal, so the band keeps a
+    // window of its own; wheel and arrow keys move it through ui.scroll, the buttons where those
+    // never reach it.
+    bandRows = body.length
+    scrollBand(0)
+    const header = [Text({ color: 'red', bold: true, children: ['● ' + parts.join(' · ')] })]
+    if (body.length > VISIBLE_ROWS) {
+      const last = Math.min(body.length, bandOffset + VISIBLE_ROWS)
+      const move = (by) => () => {
+        if (scrollBand(by)) $.ui.invalidate('ui.render')
+      }
+      header.push(Button({ key: SCROLL_UP, label: '▲', plain: true, dimColor: bandOffset === 0, onPress: move(-1) }))
+      header.push(
+        Button({ key: SCROLL_DOWN, label: '▼', plain: true, dimColor: last === body.length, onPress: move(1) }),
+      )
+      header.push(Text({ dimColor: true, children: [bandOffset + 1 + '–' + last + ' of ' + body.length] }))
+    }
+    const shown = body.slice(bandOffset, bandOffset + VISIBLE_ROWS)
+    const top = Box({ flexDirection: 'row', gap: 1, children: header })
     // Keep whatever other mods draw in the band.
-    return Box({ flexDirection: 'column', children: [...lines, await next(e)] })
+    return Box({ flexDirection: 'column', children: [top, ...shown, await next(e)] })
   })
 }

@@ -10,7 +10,9 @@ has background work running, or any subagent is running:
         ↻ shell: Run full test suite on main
         ↻ shell: Run frontend tests with coverage
 
-Up to three sessions are listed by their title (as the sidebar shows it), then `+N more`.
+Every such session is listed by its title (as the sidebar shows it). The band stays small: its
+header plus at most five rows. Past that it scrolls, with the mouse wheel or arrow keys over it, or
+with the ▲ ▼ buttons beside the header, which also shows which rows are in view (`2–6 of 12`).
 
 - **Progress bar.** A session with a task list (the Desktop app's pinned plan) shows steps done out
   of total, and the step in progress.

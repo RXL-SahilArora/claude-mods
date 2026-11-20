@@ -180,3 +180,52 @@ test('a background shell is listed from its start until its completion notice', 
   // The notice is not what the session is doing.
   expect(store.get('activity:self').activity).toBe('Wait 90 seconds')
 })
+
+test('a band taller than its window shows five rows and scrolls by button', async ($, on) => {
+  const store = new Map<string, any>()
+  let release = () => {}
+  on('session.id', () => ({ value: 'self' }))
+  on('session.cwd', () => ({ value: '/x/me' }))
+  on('process.run', () => ({ value: { stdout: '', stderr: '', code: 0 } }))
+  on('agent.list', () => ({ value: [] }))
+  on('clock.now', () => ({ value: 1000 }))
+  on('clock.every', () => new Promise((r) => (release = () => r({ value: undefined }))))
+  on('store.set', (_, e: any) => {
+    store.set(e.key, e.value)
+    return { value: undefined }
+  })
+  on('store.get', (_, e: any) => ({ value: store.get(e.key) }))
+  on('store.keys', () => ({ value: [...store.keys()] }))
+  on('ui.invalidate', () => ({ value: undefined }))
+  on('command.register', () => ({ value: { command: 'badge-clear' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/x/me', surface: 'desktop', isInteractive: true })
+  // Four working sessions with two background shells each: 12 body rows.
+  for (const n of [1, 2, 3, 4]) {
+    store.set('activity:s' + n, {
+      busy: true,
+      agents: 0,
+      name: 'SESSION ' + n,
+      activity: 'Working ' + n,
+      background: [
+        { id: n + 'a', type: 'shell', label: 'Job ' + n + 'a' },
+        { id: n + 'b', type: 'shell', label: 'Job ' + n + 'b' },
+      ],
+      at: 1000,
+    })
+  }
+  release()
+  await new Promise((r) => setTimeout(r, 20))
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
+  expect((await ui.find({ type: 'Text', text: /of 12/ }))?.text).toBe('1–5 of 12')
+  expect(await ui.find({ type: 'Text', text: /Job 2b/ })).toBeUndefined()
+
+  await ui.press({ key: 'badge-scroll-down' } as any)
+  await ui.unmount()
+  const again = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
+  expect((await again.find({ type: 'Text', text: /of 12/ }))?.text).toBe('2–6 of 12')
+  expect((await again.find({ type: 'Text', text: /Job 2b/ }))?.text).toBe('    ↻ shell: Job 2b')
+  await again.unmount()
+})

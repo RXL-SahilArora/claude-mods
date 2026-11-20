@@ -7,7 +7,7 @@
       "name": "session-activity-badge",
       "source": "./session-activity-badge",
       "description": "Badge above the prompt while another session or a subagent is working",
-      "version": "0.6.3"
+      "version": "0.7.0"
     }
   ]
 }
