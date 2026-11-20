@@ -1,0 +1,13 @@
+{
+  "name": "local-mods",
+  "owner": { "name": "RXL-SahilArora" },
+  "metadata": { "description": "Personal Claude Code mods", "version": "0.1.0" },
+  "plugins": [
+    {
+      "name": "session-activity-badge",
+      "source": "./session-activity-badge",
+      "description": "Badge above the prompt while another session or a subagent is working",
+      "version": "0.6.1"
+    }
+  ]
+}

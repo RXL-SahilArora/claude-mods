@@ -1,0 +1,4 @@
+{
+  "description": "Publishes this session's busy state to the shared mod store and draws a badge above the prompt while another session or a subagent is working",
+  "modules": ["./register.js"]
+}

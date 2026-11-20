@@ -1,0 +1,7 @@
+{
+  "name": "session-activity-badge",
+  "version": "0.6.1",
+  "description": "Shows a small badge above the prompt while any other Claude Code session on this machine, or a subagent of this one, is working; shows nothing when all are idle.",
+  "author": { "name": "RXL-SahilArora" },
+  "license": "MIT"
+}
