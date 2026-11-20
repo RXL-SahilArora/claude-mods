@@ -164,6 +164,12 @@ test('a background shell is listed from its start until its completion notice', 
   } as any)
   await new Promise((r) => setTimeout(r, 0))
   expect(store.get('activity:self').background).toEqual([])
+
+  // A task Claude stops sends no notice: the TaskStop call itself removes it.
+  await $.tool.call({ tool: 'Bash', command: 'sleep 90', description: 'Wait 90 seconds', run_in_background: true } as any)
+  await $.tool.call({ tool: 'TaskStop', task_id: 'bx7' } as any)
+  await new Promise((r) => setTimeout(r, 0))
+  expect(store.get('activity:self').background).toEqual([])
   // The notice is not what the session is doing.
-  expect(store.get('activity:self').activity).toBe('Wait 90 seconds')
+  expect(store.get('activity:self').activity).toBe('TaskStop')
 })

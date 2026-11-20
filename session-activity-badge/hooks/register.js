@@ -317,6 +317,13 @@ export function register(on) {
       activity = describeCall(e)
       publish($).catch(() => {})
     }
+    // A task Claude stops sends no completion notice; drop it here, whatever the stop answers.
+    if (e.tool === 'TaskStop') {
+      const stopped = String(e.task_id ?? e.shell_id ?? '')
+      background = background.filter((t) => t.id !== stopped)
+      publish($).catch(() => {})
+      return next(e)
+    }
     if (e.tool !== 'Bash') return next(e)
     // A shell the model or the person sent to the background answers with its task id.
     const answer = await next(e)
